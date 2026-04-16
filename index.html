@@ -1,9 +1,8 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Control de Acceso</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
@@ -16,7 +15,7 @@ text-align:center;
 }
 
 .header{
-background:#fff;
+background:white;
 padding:10px 0;
 border-bottom:2px solid #0b3d91;
 box-shadow:0 2px 6px rgba(0,0,0,.05);
@@ -28,7 +27,7 @@ max-width:200px;
 }
 
 .container{
-background:#fff;
+background:white;
 width:90%;
 max-width:380px;
 margin:30px auto;
@@ -58,6 +57,7 @@ border-radius:10px;
 border:1px solid #ccc;
 margin-bottom:18px;
 outline:none;
+transition:.2s;
 }
 
 input:focus{
@@ -70,22 +70,23 @@ width:100%;
 padding:13px;
 border:none;
 border-radius:12px;
-color:#fff;
+color:white;
 font-size:15px;
+margin-bottom:12px;
 cursor:pointer;
 transition:.2s;
-background:#0b3d91;
 }
 
 .btn:hover{
-background:#092f6f;
 transform:scale(1.02);
 }
 
-.btn:disabled{
-background:#999;
-cursor:not-allowed;
-transform:none;
+.ingreso{
+background:#0b3d91;
+}
+
+.ingreso:hover{
+background:#092f6f;
 }
 
 .footer{
@@ -120,7 +121,7 @@ font-weight:700;
 
 <input id="docInput" placeholder="Número de documento">
 
-<button class="btn" id="btnIngreso" onclick="irIngreso()">Ingreso</button>
+<button class="btn ingreso" onclick="irIngreso()">Ingreso</button>
 
 <div class="footer">
 <div class="departamento">
@@ -140,101 +141,108 @@ const SHEET_URL = "https://docs.google.com/spreadsheets/d/1nf60amlLaZTUmXu9k-IE7
 
 let data = [];
 
-async function cargarDatos(){
-
+async function cargarDatos() {
 try{
-
 const res = await fetch(SHEET_URL);
 const text = await res.text();
 const json = JSON.parse(text.substring(47).slice(0,-2));
 
-data = json.table.rows.map(r=>{
-
+data = json.table.rows.map(r => {
 const c = (r.c || []).map(x => x ? x.v : "");
 
-return{
+return {
 timestamp:c[0],
-tipo:limpiar(c[1]),
-doc:limpiar(c[2]),
-nombre:limpiar(c[3]),
-rol:limpiar(c[4]),
-entidad:limpiar(c[5]),
-placa:limpiar(c[6]),
-contacto:limpiar(c[8]),
-emergencia:limpiar(c[9]),
-destino:limpiar(c[10]),
-parentesco:limpiar(c[11])
+tipo:limpiarTexto(c[1]),
+doc:limpiarTexto(c[2]),
+nombre:limpiarTexto(c[3]),
+rol:limpiarTexto(c[4]),
+entidad:limpiarTexto(c[5]),
+placa:limpiarTexto(c[6]),
+contacto:limpiarTexto(c[8]),
+emergencia:limpiarTexto(c[9]),
+parentesco:normalizarParentesco(c[11])
 };
 
 });
 
-}catch(error){
-
-document.getElementById("mensaje").innerText="Error cargando base de datos";
-
+}catch(e){
+alert("Error cargando base de datos");
+}
 }
 
+window.onload = cargarDatos;
+
+function limpiarTexto(texto){
+return String(texto || "").replace(/\s+/g," ").trim();
 }
 
-function limpiar(txt){
-return String(txt || "").replace(/\s+/g," ").trim();
+function limpiarDoc(doc){
+return String(doc || "").replace(/\s+/g,"").trim();
+}
+
+function normalizarParentesco(valor){
+
+const v = limpiarTexto(valor).toLowerCase();
+
+if(v.includes("espos")) return "Esposa/o";
+if(v.includes("hij")) return "Hija/o";
+if(v.includes("herman")) return "Hermana/o";
+if(v.includes("amig")) return "Amiga/o";
+
+return "Otros:";
 }
 
 function getUser(){
 
-const doc = limpiar(document.getElementById("docInput").value);
+const doc = limpiarDoc(document.getElementById("docInput").value);
 
 if(!doc) return null;
 
-return data.find(u => limpiar(u.doc) === doc);
-
-}
-
-function esHoy(fecha){
-
-if(!fecha) return false;
-
-const f = new Date(fecha);
-const h = new Date();
-
-return(
-f.getDate() === h.getDate() &&
-f.getMonth() === h.getMonth() &&
-f.getFullYear() === h.getFullYear()
-);
-
+return data.find(u => limpiarDoc(u.doc) === doc);
 }
 
 function yaIngresoHoy(doc){
 
-return data.some(u => limpiar(u.doc) === limpiar(doc) && esHoy(u.timestamp));
+const hoy = new Date();
+
+return data.some(u => {
+
+if(limpiarDoc(u.doc) !== limpiarDoc(doc)) return false;
+
+const fecha = new Date(u.timestamp);
+
+return (
+fecha.getDate() === hoy.getDate() &&
+fecha.getMonth() === hoy.getMonth() &&
+fecha.getFullYear() === hoy.getFullYear()
+);
+
+});
 
 }
 
 // MENSAJE DINAMICO
 document.getElementById("docInput").addEventListener("input",function(){
 
-const mensaje = document.getElementById("mensaje");
-const btn = document.getElementById("btnIngreso");
-const valor = this.value.trim();
-
-mensaje.innerText="";
-btn.disabled=false;
-
-if(!valor) return;
-
 const user = getUser();
+const mensaje = document.getElementById("mensaje");
+const doc = this.value.trim();
 
-if(yaIngresoHoy(valor)){
+if(!doc){
+mensaje.innerText="";
+return;
+}
+
+if(yaIngresoHoy(doc)){
 mensaje.innerText="Este documento ya registró ingreso hoy.";
-btn.disabled=true;
 return;
 }
 
 if(user){
-mensaje.innerText="Bienvenido nuevamente, " + user.nombre.split(" ")[0] + " 👋";
+const nombre = user.nombre.split(" ")[0];
+mensaje.innerText="Bienvenido nuevamente, " + nombre + " 👋";
 }else{
-mensaje.innerText="Bienvenido. Puede registrar su ingreso.";
+mensaje.innerText="Bienvenido a nuestras instalaciones, por favor registre sus datos 😊";
 }
 
 });
@@ -250,7 +258,7 @@ return;
 }
 
 if(yaIngresoHoy(input)){
-alert("Este documento ya fue registrado hoy");
+alert("Este documento ya registró ingreso hoy");
 return;
 }
 
@@ -259,7 +267,7 @@ const user = getUser();
 const form = "https://docs.google.com/forms/d/e/1FAIpQLSd0NQ4XvHoMeSLRNJvas_t_7ufz9QxDUHf3erdBoiXqzd-aVQ/viewform";
 
 if(!user){
-window.location.href=form;
+window.location.href = form;
 return;
 }
 
@@ -276,15 +284,12 @@ form +
 "&entry.1316902717=" + encodeURIComponent(user.emergencia) +
 "&entry.539345216=" + encodeURIComponent(user.parentesco);
 
-window.location.href=url;
-
+window.location.href = url;
 }
 
 document.getElementById("docInput").addEventListener("keypress",function(e){
-if(e.key==="Enter") irIngreso();
+if(e.key === "Enter") irIngreso();
 });
-
-window.onload=cargarDatos;
 
 </script>
 
