@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Control de Acceso Especial</title>
+<title>Control de Acceso</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
@@ -16,7 +16,7 @@ text-align:center;
 }
 
 .header{
-background:white;
+background:#fff;
 padding:10px 0;
 border-bottom:2px solid #0b3d91;
 box-shadow:0 2px 6px rgba(0,0,0,.05);
@@ -28,7 +28,7 @@ max-width:200px;
 }
 
 .container{
-background:white;
+background:#fff;
 width:90%;
 max-width:380px;
 margin:30px auto;
@@ -47,7 +47,7 @@ margin-bottom:10px;
 font-size:13px;
 color:#444;
 margin-bottom:15px;
-min-height:20px;
+min-height:22px;
 }
 
 input{
@@ -69,7 +69,7 @@ width:100%;
 padding:13px;
 border:none;
 border-radius:12px;
-color:white;
+color:#fff;
 font-size:15px;
 cursor:pointer;
 background:#0b3d91;
@@ -130,99 +130,70 @@ CORPORACION COLEGIO INTERNACIONAL ALTAMIRA
 
 <script>
 
-// BASE DE DATOS PERSONAS
-const BASE_URL = "PEGA_AQUI_TU_LINK_GVIZ_DE_BASE_GENERAL";
+// MISMA HOJA ORIGINAL
+const SHEET_URL = "https://docs.google.com/spreadsheets/d/1nf60amlLaZTUmXu9k-IE7DTyl8RmCARJOdP5wuBjMjw/gviz/tq?gid=2145380964&tqx=out:json";
 
-// REGISTRO DEL DIA
-const INGRESOS_ESPECIALES = "PEGA_AQUI_TU_LINK_GVIZ_DE_INGRESOS_ESPECIALES";
+let data = [];
 
-let usuarios = [];
-let ingresosHoy = [];
-
-// ==================== CARGAR ====================
 async function cargarDatos(){
-
-await cargarUsuarios();
-await cargarIngresosHoy();
-
-}
-
-async function cargarUsuarios(){
 try{
-const res = await fetch(BASE_URL);
+const res = await fetch(SHEET_URL);
 const text = await res.text();
 const json = JSON.parse(text.substring(47).slice(0,-2));
 
-usuarios = json.table.rows.map(r=>{
+data = json.table.rows.map(r=>{
 const c=(r.c||[]).map(x=>x?x.v:"");
 
 return{
-tipo: limpiar(c[1]),
-doc: limpiar(c[2]),
-nombre: limpiar(c[3]),
-rol: limpiar(c[4]),
-entidad: limpiar(c[5]),
-placa: limpiar(c[6]),
-contacto: limpiar(c[8]),
-emergencia: limpiar(c[9]),
-parentesco: limpiar(c[11])
+timestamp:c[0],
+tipo:limpiar(c[1]),
+doc:limpiar(c[2]),
+nombre:limpiar(c[3]),
+rol:limpiar(c[4]),
+entidad:limpiar(c[5]),
+placa:limpiar(c[6]),
+contacto:limpiar(c[8]),
+emergencia:limpiar(c[9]),
+destino:limpiar(c[10]),
+parentesco:limpiar(c[11])
 };
 
 });
 
 }catch(e){
-alert("Error cargando base principal");
+alert("Error cargando base de datos");
 }
 }
 
-async function cargarIngresosHoy(){
-try{
-const res = await fetch(INGRESOS_ESPECIALES);
-const text = await res.text();
-const json = JSON.parse(text.substring(47).slice(0,-2));
-
-ingresosHoy = json.table.rows.map(r=>{
-const c=(r.c||[]).map(x=>x?x.v:"");
-
-return{
-fecha:c[0],
-doc: limpiar(c[2])
-};
-
-});
-
-}catch(e){
-ingresosHoy=[];
-}
+function limpiar(v){
+return String(v||"").trim();
 }
 
-// ==================== UTILIDADES ====================
-function limpiar(t){
-return String(t||"").trim();
+function getUser(doc){
+return data.find(x=>x.doc===doc);
 }
 
-function hoyTexto(){
-const d = new Date();
-return d.toDateString();
+function fechaHoy(){
+return new Date().toDateString();
 }
 
 function yaIngresoHoy(doc){
 
-return ingresosHoy.some(x=>{
+return data.some(x=>{
 
-const f = new Date(x.fecha).toDateString();
-return x.doc === doc && f === hoyTexto();
+if(x.doc!==doc) return false;
+if(!x.timestamp) return false;
+
+const f = new Date(x.timestamp).toDateString();
+
+return f===fechaHoy();
 
 });
 
 }
 
-function buscarUsuario(doc){
-return usuarios.find(u=>u.doc===doc);
-}
-
-// ==================== MENSAJE ====================
-document.getElementById("docInput").addEventListener("input", function(){
+// MENSAJE DINAMICO
+document.getElementById("docInput").addEventListener("input",function(){
 
 const doc = limpiar(this.value);
 const msg = document.getElementById("mensaje");
@@ -233,47 +204,46 @@ btn.disabled=false;
 
 if(!doc) return;
 
-const user = buscarUsuario(doc);
+const user = getUser(doc);
 
 if(!user){
-msg.innerText="Documento no encontrado.";
-btn.disabled=true;
+msg.innerText="Bienvenido. Puede registrar su cita.";
 return;
 }
 
 if(yaIngresoHoy(doc)){
-msg.innerText="Este visitante ya registró ingreso hoy.";
+msg.innerText="Este documento ya registró ingreso hoy.";
 btn.disabled=true;
 return;
 }
 
-msg.innerText="Bienvenido " + user.nombre.split(" ")[0] + ", puede registrar su ingreso.";
+msg.innerText="Bienvenido nuevamente, " + user.nombre.split(" ")[0] + " 👋";
 
 });
 
-// ==================== INGRESO ====================
+// INGRESO
 function irIngreso(){
 
 const doc = limpiar(document.getElementById("docInput").value);
 
 if(!doc){
-alert("Ingrese documento");
-return;
-}
-
-const user = buscarUsuario(doc);
-
-if(!user){
-alert("Documento no encontrado");
+alert("Debe ingresar un documento");
 return;
 }
 
 if(yaIngresoHoy(doc)){
-alert("Ya fue registrado hoy");
+alert("Este documento ya fue registrado hoy");
 return;
 }
 
-const form = "PEGA_AQUI_TU_FORM_DE_INGRESOS_ESPECIALES";
+const user = getUser(doc);
+
+const form = "https://docs.google.com/forms/d/e/1FAIpQLSd0NQ4XvHoMeSLRNJvas_t_7ufz9QxDUHf3erdBoiXqzd-aVQ/viewform";
+
+if(!user){
+window.location.href=form;
+return;
+}
 
 const url =
 form +
