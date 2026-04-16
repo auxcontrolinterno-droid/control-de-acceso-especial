@@ -1,136 +1,292 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Control de Acceso</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+body{
+font-family:'Inter',sans-serif;
+background:linear-gradient(135deg,#e9eef5,#dfe7f1);
+margin:0;
+text-align:center;
+}
+
+.header{
+background:#fff;
+padding:10px 0;
+border-bottom:2px solid #0b3d91;
+box-shadow:0 2px 6px rgba(0,0,0,.05);
+}
+
+.header img{
+width:55%;
+max-width:200px;
+}
+
+.container{
+background:#fff;
+width:90%;
+max-width:380px;
+margin:30px auto;
+padding:25px;
+border-radius:18px;
+box-shadow:0 10px 25px rgba(0,0,0,.08);
+}
+
+h2{
+margin-bottom:10px;
+color:#0b3d91;
+font-weight:700;
+font-size:24px;
+}
+
+.mensaje{
+font-size:13px;
+color:#444;
+margin-bottom:15px;
+min-height:20px;
+}
+
+input{
+width:80%;
+padding:12px;
+border-radius:10px;
+border:1px solid #ccc;
+margin-bottom:18px;
+outline:none;
+}
+
+input:focus{
+border-color:#0b3d91;
+box-shadow:0 0 0 2px rgba(11,61,145,.1);
+}
+
+.btn{
+width:100%;
+padding:13px;
+border:none;
+border-radius:12px;
+color:#fff;
+font-size:15px;
+cursor:pointer;
+transition:.2s;
+background:#0b3d91;
+}
+
+.btn:hover{
+background:#092f6f;
+transform:scale(1.02);
+}
+
+.btn:disabled{
+background:#999;
+cursor:not-allowed;
+transform:none;
+}
+
+.footer{
+font-size:11px;
+margin-top:20px;
+line-height:1.4;
+}
+
+.departamento{
+color:#0b3d91;
+font-weight:700;
+}
+
+.corporacion{
+color:#000;
+font-weight:700;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+<img src="https://i.imgur.com/OB279U8.jpeg">
+</div>
+
+<div class="container">
+
+<h2>Control de Acceso</h2>
+
+<div class="mensaje" id="mensaje"></div>
+
+<input id="docInput" placeholder="Número de documento">
+
+<button class="btn" id="btnIngreso" onclick="irIngreso()">Ingreso</button>
+
+<div class="footer">
+<div class="departamento">
+DEPARTAMENTO DE CONTROL INTERNO DE SEGURIDAD E INFRAESTRUCTURA
+</div>
+
+<div class="corporacion">
+CORPORACION COLEGIO INTERNACIONAL ALTAMIRA
+</div>
+</div>
+
+</div>
+
 <script>
 
 const SHEET_URL = "https://docs.google.com/spreadsheets/d/1nf60amlLaZTUmXu9k-IE7DTyl8RmCARJOdP5wuBjMjw/gviz/tq?gid=2145380964&tqx=out:json";
 
 let data = [];
 
-async function cargarDatos() {
-  try {
-    const res = await fetch(SHEET_URL);
-    const text = await res.text();
+async function cargarDatos(){
 
-    const json = JSON.parse(text.substring(47).slice(0, -2));
+try{
 
-    data = json.table.rows.map(r => {
-      const c = (r.c || []).map(x => x ? x.v : "");
+const res = await fetch(SHEET_URL);
+const text = await res.text();
+const json = JSON.parse(text.substring(47).slice(0,-2));
 
-      return {
-        timestamp: c[0],
-        tipo: limpiar(c[1]),
-        doc: limpiar(c[2]),
-        nombre: limpiar(c[3]),
-        rol: limpiar(c[4]),
-        entidad: limpiar(c[5]),
-        placa: limpiar(c[6]),
-        contacto: limpiar(c[8]),
-        emergencia: limpiar(c[9]),
-        destino: limpiar(c[10]),
-        parentesco: limpiar(c[11])
-      };
-    });
+data = json.table.rows.map(r=>{
 
-  } catch (error) {
-    console.log(error);
-    alert("Error cargando base de datos");
-  }
+const c = (r.c || []).map(x => x ? x.v : "");
+
+return{
+timestamp:c[0],
+tipo:limpiar(c[1]),
+doc:limpiar(c[2]),
+nombre:limpiar(c[3]),
+rol:limpiar(c[4]),
+entidad:limpiar(c[5]),
+placa:limpiar(c[6]),
+contacto:limpiar(c[8]),
+emergencia:limpiar(c[9]),
+destino:limpiar(c[10]),
+parentesco:limpiar(c[11])
+};
+
+});
+
+}catch(error){
+
+document.getElementById("mensaje").innerText="Error cargando base de datos";
+
+}
+
 }
 
 function limpiar(txt){
-  return String(txt || "").trim();
+return String(txt || "").replace(/\s+/g," ").trim();
 }
 
-function getUser(doc){
-  return data.find(x => limpiar(x.doc) === limpiar(doc));
+function getUser(){
+
+const doc = limpiar(document.getElementById("docInput").value);
+
+if(!doc) return null;
+
+return data.find(u => limpiar(u.doc) === doc);
+
 }
 
 function esHoy(fecha){
 
-  const hoy = new Date();
-  const f = new Date(fecha);
+if(!fecha) return false;
 
-  return (
-    f.getDate() === hoy.getDate() &&
-    f.getMonth() === hoy.getMonth() &&
-    f.getFullYear() === hoy.getFullYear()
-  );
+const f = new Date(fecha);
+const h = new Date();
+
+return(
+f.getDate() === h.getDate() &&
+f.getMonth() === h.getMonth() &&
+f.getFullYear() === h.getFullYear()
+);
+
 }
 
 function yaIngresoHoy(doc){
-  return data.some(x => limpiar(x.doc) === limpiar(doc) && esHoy(x.timestamp));
+
+return data.some(u => limpiar(u.doc) === limpiar(doc) && esHoy(u.timestamp));
+
 }
 
-// MENSAJE
-document.getElementById("docInput").addEventListener("input", function(){
+// MENSAJE DINAMICO
+document.getElementById("docInput").addEventListener("input",function(){
 
-  const doc = this.value.trim();
-  const mensaje = document.getElementById("mensaje");
-  const btn = document.getElementById("btnIngreso");
+const mensaje = document.getElementById("mensaje");
+const btn = document.getElementById("btnIngreso");
+const valor = this.value.trim();
 
-  mensaje.innerText = "";
-  btn.disabled = false;
+mensaje.innerText="";
+btn.disabled=false;
 
-  if(!doc) return;
+if(!valor) return;
 
-  const user = getUser(doc);
+const user = getUser();
 
-  if(yaIngresoHoy(doc)){
-    mensaje.innerText = "Este documento ya registró ingreso hoy.";
-    btn.disabled = true;
-    return;
-  }
+if(yaIngresoHoy(valor)){
+mensaje.innerText="Este documento ya registró ingreso hoy.";
+btn.disabled=true;
+return;
+}
 
-  if(user){
-    mensaje.innerText = "Bienvenido nuevamente, " + user.nombre.split(" ")[0] + " 👋";
-  } else {
-    mensaje.innerText = "Bienvenido. Puede registrar su ingreso.";
-  }
+if(user){
+mensaje.innerText="Bienvenido nuevamente, " + user.nombre.split(" ")[0] + " 👋";
+}else{
+mensaje.innerText="Bienvenido. Puede registrar su ingreso.";
+}
 
 });
 
 // INGRESO
 function irIngreso(){
 
-  const doc = document.getElementById("docInput").value.trim();
+const input = document.getElementById("docInput").value.trim();
 
-  if(!doc){
-    alert("Debe ingresar documento");
-    return;
-  }
-
-  if(yaIngresoHoy(doc)){
-    alert("Este documento ya fue registrado hoy");
-    return;
-  }
-
-  const user = getUser(doc);
-
-  const form = "https://docs.google.com/forms/d/e/1FAIpQLSd0NQ4XvHoMeSLRNJvas_t_7ufz9QxDUHf3erdBoiXqzd-aVQ/viewform";
-
-  if(!user){
-    window.location.href = form;
-    return;
-  }
-
-  const url =
-    form +
-    "?usp=pp_url" +
-    "&entry.2083119061=" + encodeURIComponent(user.tipo) +
-    "&entry.311902120=" + encodeURIComponent(user.doc) +
-    "&entry.1899230705=" + encodeURIComponent(user.nombre) +
-    "&entry.477144471=" + encodeURIComponent(user.contacto) +
-    "&entry.2145689969=" + encodeURIComponent(user.rol) +
-    "&entry.1527361506=" + encodeURIComponent(user.entidad) +
-    "&entry.1268448003=" + encodeURIComponent(user.placa) +
-    "&entry.1316902717=" + encodeURIComponent(user.emergencia) +
-    "&entry.539345216=" + encodeURIComponent(user.parentesco);
-
-  window.location.href = url;
+if(!input){
+alert("Debe ingresar un número de documento");
+return;
 }
 
-window.onload = cargarDatos;
+if(yaIngresoHoy(input)){
+alert("Este documento ya fue registrado hoy");
+return;
+}
 
-document.getElementById("docInput").addEventListener("keypress", function(e){
-  if(e.key === "Enter") irIngreso();
+const user = getUser();
+
+const form = "https://docs.google.com/forms/d/e/1FAIpQLSd0NQ4XvHoMeSLRNJvas_t_7ufz9QxDUHf3erdBoiXqzd-aVQ/viewform";
+
+if(!user){
+window.location.href=form;
+return;
+}
+
+const url =
+form +
+"?usp=pp_url" +
+"&entry.2083119061=" + encodeURIComponent(user.tipo) +
+"&entry.311902120=" + encodeURIComponent(user.doc) +
+"&entry.1899230705=" + encodeURIComponent(user.nombre) +
+"&entry.477144471=" + encodeURIComponent(user.contacto) +
+"&entry.2145689969=" + encodeURIComponent(user.rol) +
+"&entry.1527361506=" + encodeURIComponent(user.entidad) +
+"&entry.1268448003=" + encodeURIComponent(user.placa) +
+"&entry.1316902717=" + encodeURIComponent(user.emergencia) +
+"&entry.539345216=" + encodeURIComponent(user.parentesco);
+
+window.location.href=url;
+
+}
+
+document.getElementById("docInput").addEventListener("keypress",function(e){
+if(e.key==="Enter") irIngreso();
 });
 
+window.onload=cargarDatos;
+
 </script>
+
+</body>
+</html>
