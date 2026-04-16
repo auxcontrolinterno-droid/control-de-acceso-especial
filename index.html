@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Control de Acceso Especial</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+body{
+font-family:'Inter',sans-serif;
+background:linear-gradient(135deg,#e9eef5,#dfe7f1);
+margin:0;
+text-align:center;
+}
+
+.header{
+background:white;
+padding:10px 0;
+border-bottom:2px solid #0b3d91;
+box-shadow:0 2px 6px rgba(0,0,0,.05);
+}
+
+.header img{
+width:55%;
+max-width:200px;
+}
+
+.container{
+background:white;
+width:90%;
+max-width:380px;
+margin:30px auto;
+padding:25px;
+border-radius:18px;
+box-shadow:0 10px 25px rgba(0,0,0,.08);
+}
+
+h2{
+color:#0b3d91;
+font-size:24px;
+margin-bottom:10px;
+}
+
+.mensaje{
+font-size:13px;
+color:#444;
+margin-bottom:15px;
+min-height:20px;
+}
+
+input{
+width:80%;
+padding:12px;
+border-radius:10px;
+border:1px solid #ccc;
+margin-bottom:18px;
+outline:none;
+}
+
+input:focus{
+border-color:#0b3d91;
+box-shadow:0 0 0 2px rgba(11,61,145,.1);
+}
+
+.btn{
+width:100%;
+padding:13px;
+border:none;
+border-radius:12px;
+color:white;
+font-size:15px;
+cursor:pointer;
+background:#0b3d91;
+}
+
+.btn:hover{
+background:#092f6f;
+}
+
+.btn:disabled{
+background:#999;
+cursor:not-allowed;
+}
+
+.footer{
+font-size:11px;
+margin-top:20px;
+line-height:1.4;
+}
+
+.departamento{
+color:#0b3d91;
+font-weight:700;
+}
+
+.corporacion{
+font-weight:700;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+<img src="https://i.imgur.com/OB279U8.jpeg">
+</div>
+
+<div class="container">
+
+<h2>Control de Acceso</h2>
+
+<div class="mensaje" id="mensaje"></div>
+
+<input id="docInput" placeholder="Número de documento">
+
+<button class="btn" id="btnIngreso" onclick="irIngreso()">Ingreso</button>
+
+<div class="footer">
+<div class="departamento">
+DEPARTAMENTO DE CONTROL INTERNO DE SEGURIDAD E INFRAESTRUCTURA
+</div>
+<div class="corporacion">
+CORPORACION COLEGIO INTERNACIONAL ALTAMIRA
+</div>
+</div>
+
+</div>
+
+<script>
+
+// BASE DE DATOS PERSONAS
+const BASE_URL = "PEGA_AQUI_TU_LINK_GVIZ_DE_BASE_GENERAL";
+
+// REGISTRO DEL DIA
+const INGRESOS_ESPECIALES = "PEGA_AQUI_TU_LINK_GVIZ_DE_INGRESOS_ESPECIALES";
+
+let usuarios = [];
+let ingresosHoy = [];
+
+// ==================== CARGAR ====================
+async function cargarDatos(){
+
+await cargarUsuarios();
+await cargarIngresosHoy();
+
+}
+
+async function cargarUsuarios(){
+try{
+const res = await fetch(BASE_URL);
+const text = await res.text();
+const json = JSON.parse(text.substring(47).slice(0,-2));
+
+usuarios = json.table.rows.map(r=>{
+const c=(r.c||[]).map(x=>x?x.v:"");
+
+return{
+tipo: limpiar(c[1]),
+doc: limpiar(c[2]),
+nombre: limpiar(c[3]),
+rol: limpiar(c[4]),
+entidad: limpiar(c[5]),
+placa: limpiar(c[6]),
+contacto: limpiar(c[8]),
+emergencia: limpiar(c[9]),
+parentesco: limpiar(c[11])
+};
+
+});
+
+}catch(e){
+alert("Error cargando base principal");
+}
+}
+
+async function cargarIngresosHoy(){
+try{
+const res = await fetch(INGRESOS_ESPECIALES);
+const text = await res.text();
+const json = JSON.parse(text.substring(47).slice(0,-2));
+
+ingresosHoy = json.table.rows.map(r=>{
+const c=(r.c||[]).map(x=>x?x.v:"");
+
+return{
+fecha:c[0],
+doc: limpiar(c[2])
+};
+
+});
+
+}catch(e){
+ingresosHoy=[];
+}
+}
+
+// ==================== UTILIDADES ====================
+function limpiar(t){
+return String(t||"").trim();
+}
+
+function hoyTexto(){
+const d = new Date();
+return d.toDateString();
+}
+
+function yaIngresoHoy(doc){
+
+return ingresosHoy.some(x=>{
+
+const f = new Date(x.fecha).toDateString();
+return x.doc === doc && f === hoyTexto();
+
+});
+
+}
+
+function buscarUsuario(doc){
+return usuarios.find(u=>u.doc===doc);
+}
+
+// ==================== MENSAJE ====================
+document.getElementById("docInput").addEventListener("input", function(){
+
+const doc = limpiar(this.value);
+const msg = document.getElementById("mensaje");
+const btn = document.getElementById("btnIngreso");
+
+msg.innerText="";
+btn.disabled=false;
+
+if(!doc) return;
+
+const user = buscarUsuario(doc);
+
+if(!user){
+msg.innerText="Documento no encontrado.";
+btn.disabled=true;
+return;
+}
+
+if(yaIngresoHoy(doc)){
+msg.innerText="Este visitante ya registró ingreso hoy.";
+btn.disabled=true;
+return;
+}
+
+msg.innerText="Bienvenido " + user.nombre.split(" ")[0] + ", puede registrar su ingreso.";
+
+});
+
+// ==================== INGRESO ====================
+function irIngreso(){
+
+const doc = limpiar(document.getElementById("docInput").value);
+
+if(!doc){
+alert("Ingrese documento");
+return;
+}
+
+const user = buscarUsuario(doc);
+
+if(!user){
+alert("Documento no encontrado");
+return;
+}
+
+if(yaIngresoHoy(doc)){
+alert("Ya fue registrado hoy");
+return;
+}
+
+const form = "PEGA_AQUI_TU_FORM_DE_INGRESOS_ESPECIALES";
+
+const url =
+form +
+"?usp=pp_url" +
+"&entry.2083119061=" + encodeURIComponent(user.tipo) +
+"&entry.311902120=" + encodeURIComponent(user.doc) +
+"&entry.1899230705=" + encodeURIComponent(user.nombre) +
+"&entry.477144471=" + encodeURIComponent(user.contacto) +
+"&entry.2145689969=" + encodeURIComponent(user.rol) +
+"&entry.1527361506=" + encodeURIComponent(user.entidad) +
+"&entry.1268448003=" + encodeURIComponent(user.placa) +
+"&entry.1316902717=" + encodeURIComponent(user.emergencia) +
+"&entry.539345216=" + encodeURIComponent(user.parentesco);
+
+window.location.href=url;
+
+}
+
+window.onload=cargarDatos;
+
+document.getElementById("docInput").addEventListener("keypress",function(e){
+if(e.key==="Enter") irIngreso();
+});
+
+</script>
+
+</body>
+</html>
