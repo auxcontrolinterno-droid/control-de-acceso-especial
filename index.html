@@ -16,14 +16,15 @@ text-align:center;
 
 .header{
 background:white;
-padding:10px 0;
+padding:18px 0;
 border-bottom:2px solid #0b3d91;
 box-shadow:0 2px 6px rgba(0,0,0,.05);
 }
 
 .header img{
-width:55%;
-max-width:200px;
+width:85%;
+max-width:340px;
+height:auto;
 }
 
 .container{
@@ -141,18 +142,14 @@ const SHEET_URL = "https://docs.google.com/spreadsheets/d/1nf60amlLaZTUmXu9k-IE7
 
 let data = [];
 
-// ================= CARGAR DATOS =================
 async function cargarDatos(){
-
 try{
-
 const res = await fetch(SHEET_URL);
 const text = await res.text();
 const json = JSON.parse(text.substring(47).slice(0,-2));
 
 data = json.table.rows.map(r=>{
-
-const c = (r.c || []).map(x => x ? x.v : "");
+const c=(r.c||[]).map(x=>x?x.v:"");
 
 return{
 timestamp:c[0],
@@ -166,29 +163,25 @@ contacto:limpiarTexto(c[8]),
 emergencia:limpiarTexto(c[9]),
 parentesco:normalizarParentesco(c[11])
 };
-
 });
 
 }catch(e){
 alert("Error cargando base de datos");
 }
-
 }
 
-window.onload = cargarDatos;
+window.onload=cargarDatos;
 
-// ================= UTILIDADES =================
 function limpiarTexto(txt){
-return String(txt || "").replace(/\s+/g," ").trim();
+return String(txt||"").replace(/\s+/g," ").trim();
 }
 
 function limpiarDoc(txt){
-return String(txt || "").replace(/\D/g,"").trim();
+return String(txt||"").replace(/\D/g,"").trim();
 }
 
 function normalizarParentesco(valor){
-
-const v = limpiarTexto(valor).toLowerCase();
+const v=limpiarTexto(valor).toLowerCase();
 
 if(v.includes("espos")) return "Esposa/o";
 if(v.includes("hij")) return "Hija/o";
@@ -199,98 +192,86 @@ return "Otros:";
 }
 
 function getUser(){
-
-const doc = limpiarDoc(document.getElementById("docInput").value);
-
+const doc=limpiarDoc(document.getElementById("docInput").value);
 if(!doc) return null;
-
-return data.find(u => u.doc === doc);
+return data.find(u=>u.doc===doc);
 }
 
-// ================= BLOQUEO REAL =================
 function yaIngresoHoy(doc){
 
-const documento = limpiarDoc(doc);
+const documento=limpiarDoc(doc);
 
-const hoy = new Date();
-const d = hoy.getDate();
-const m = hoy.getMonth() + 1;
-const y = hoy.getFullYear();
+const hoy=new Date();
+const d=hoy.getDate();
+const m=hoy.getMonth()+1;
+const y=hoy.getFullYear();
 
-return data.some(u => {
+return data.some(u=>{
 
-if(u.doc !== documento) return false;
+if(u.doc!==documento) return false;
 
-const t = String(u.timestamp);
+const t=String(u.timestamp);
 
-// Formato Date(...)
+// Date(...)
 if(t.includes("Date(")){
-
-const nums = t.match(/\d+/g);
-
+const nums=t.match(/\d+/g);
 if(!nums) return false;
 
-const anio = parseInt(nums[0]);
-const mes = parseInt(nums[1]) + 1;
-const dia = parseInt(nums[2]);
+const anio=parseInt(nums[0]);
+const mes=parseInt(nums[1])+1;
+const dia=parseInt(nums[2]);
 
-return dia === d && mes === m && anio === y;
+return dia===d && mes===m && anio===y;
 }
 
-// Formato 16/04/2026
-const match = t.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+// dd/mm/yyyy
+const match=t.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
 
 if(match){
+const dia=parseInt(match[1]);
+const mes=parseInt(match[2]);
+const anio=parseInt(match[3]);
 
-const dia = parseInt(match[1]);
-const mes = parseInt(match[2]);
-const anio = parseInt(match[3]);
-
-return dia === d && mes === m && anio === y;
+return dia===d && mes===m && anio===y;
 }
 
 return false;
 
 });
-
 }
 
-// ================= MENSAJE =================
 document.getElementById("docInput").addEventListener("input",function(){
 
-const mensaje = document.getElementById("mensaje");
-const btn = document.getElementById("btnIngreso");
+const mensaje=document.getElementById("mensaje");
+const btn=document.getElementById("btnIngreso");
+const doc=limpiarDoc(this.value);
 
-const doc = limpiarDoc(this.value);
-
-btn.disabled = false;
+btn.disabled=false;
 
 if(!doc){
 mensaje.innerText="";
 return;
 }
 
-// BLOQUEAR
 if(yaIngresoHoy(doc)){
 mensaje.innerText="⚠️ Este documento ya registró ingreso hoy.";
-btn.disabled = true;
+btn.disabled=true;
 return;
 }
 
-const user = getUser();
+const user=getUser();
 
 if(user){
-mensaje.innerText="Bienvenido nuevamente, " + user.nombre.split(" ")[0] + " 👋";
+mensaje.innerText="Bienvenido nuevamente, "+user.nombre.split(" ")[0]+" 👋";
 }else{
 mensaje.innerText="Bienvenido a nuestras instalaciones, por favor registre sus datos 😊";
 }
 
 });
 
-// ================= INGRESO =================
 function irIngreso(){
 
-const input = limpiarDoc(document.getElementById("docInput").value);
+const input=limpiarDoc(document.getElementById("docInput").value);
 
 if(!input){
 alert("Debe ingresar un número de documento");
@@ -302,34 +283,33 @@ alert("Este documento ya ingresó hoy.");
 return;
 }
 
-const user = getUser();
+const user=getUser();
 
-const form = "https://docs.google.com/forms/d/e/1FAIpQLSd0NQ4XvHoMeSLRNJvas_t_7ufz9QxDUHf3erdBoiXqzd-aVQ/viewform";
+const form="https://docs.google.com/forms/d/e/1FAIpQLSd0NQ4XvHoMeSLRNJvas_t_7ufz9QxDUHf3erdBoiXqzd-aVQ/viewform";
 
 if(!user){
-window.location.href = form;
+window.location.href=form;
 return;
 }
 
-const url =
-form +
-"?usp=pp_url" +
-"&entry.2083119061=" + encodeURIComponent(user.tipo) +
-"&entry.311902120=" + encodeURIComponent(user.doc) +
-"&entry.1899230705=" + encodeURIComponent(user.nombre) +
-"&entry.477144471=" + encodeURIComponent(user.contacto) +
-"&entry.2145689969=" + encodeURIComponent(user.rol) +
-"&entry.1527361506=" + encodeURIComponent(user.entidad) +
-"&entry.1268448003=" + encodeURIComponent(user.placa) +
-"&entry.1316902717=" + encodeURIComponent(user.emergencia) +
-"&entry.539345216=" + encodeURIComponent(user.parentesco);
+const url=
+form+
+"?usp=pp_url"+
+"&entry.2083119061="+encodeURIComponent(user.tipo)+
+"&entry.311902120="+encodeURIComponent(user.doc)+
+"&entry.1899230705="+encodeURIComponent(user.nombre)+
+"&entry.477144471="+encodeURIComponent(user.contacto)+
+"&entry.2145689969="+encodeURIComponent(user.rol)+
+"&entry.1527361506="+encodeURIComponent(user.entidad)+
+"&entry.1268448003="+encodeURIComponent(user.placa)+
+"&entry.1316902717="+encodeURIComponent(user.emergencia)+
+"&entry.539345216="+encodeURIComponent(user.parentesco);
 
-window.location.href = url;
-
+window.location.href=url;
 }
 
 document.getElementById("docInput").addEventListener("keypress",function(e){
-if(e.key === "Enter") irIngreso();
+if(e.key==="Enter") irIngreso();
 });
 
 </script>
