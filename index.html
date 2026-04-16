@@ -141,6 +141,7 @@ const SHEET_URL = "https://docs.google.com/spreadsheets/d/1nf60amlLaZTUmXu9k-IE7
 
 let data = [];
 
+// ================= CARGAR DATOS =================
 async function cargarDatos(){
 
 try{
@@ -149,14 +150,14 @@ const res = await fetch(SHEET_URL);
 const text = await res.text();
 const json = JSON.parse(text.substring(47).slice(0,-2));
 
-data = json.table.rows.map(r => {
+data = json.table.rows.map(r=>{
 
 const c = (r.c || []).map(x => x ? x.v : "");
 
 return{
 timestamp:c[0],
 tipo:limpiarTexto(c[1]),
-doc:limpiarTexto(c[2]),
+doc:limpiarDoc(c[2]),
 nombre:limpiarTexto(c[3]),
 rol:limpiarTexto(c[4]),
 entidad:limpiarTexto(c[5]),
@@ -176,12 +177,13 @@ alert("Error cargando base de datos");
 
 window.onload = cargarDatos;
 
-function limpiarTexto(texto){
-return String(texto || "").replace(/\s+/g," ").trim();
+// ================= UTILIDADES =================
+function limpiarTexto(txt){
+return String(txt || "").replace(/\s+/g," ").trim();
 }
 
-function limpiarDoc(doc){
-return String(doc || "").replace(/\s+/g,"").trim();
+function limpiarDoc(txt){
+return String(txt || "").replace(/\D/g,"").trim();
 }
 
 function normalizarParentesco(valor){
@@ -202,49 +204,64 @@ const doc = limpiarDoc(document.getElementById("docInput").value);
 
 if(!doc) return null;
 
-return data.find(u => limpiarDoc(u.doc) === doc);
-
+return data.find(u => u.doc === doc);
 }
 
-// BLOQUEO 1 VEZ AL DIA
+// ================= BLOQUEO REAL =================
 function yaIngresoHoy(doc){
 
 const documento = limpiarDoc(doc);
 
 const hoy = new Date();
-const diaHoy = hoy.getDate();
-const mesHoy = hoy.getMonth() + 1;
-const anioHoy = hoy.getFullYear();
+const d = hoy.getDate();
+const m = hoy.getMonth() + 1;
+const y = hoy.getFullYear();
 
 return data.some(u => {
 
-if(limpiarDoc(u.doc) !== documento) return false;
-if(!u.timestamp) return false;
+if(u.doc !== documento) return false;
 
-const texto = String(u.timestamp);
+const t = String(u.timestamp);
 
-const match = texto.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+// Formato Date(...)
+if(t.includes("Date(")){
 
-if(!match) return false;
+const nums = t.match(/\d+/g);
+
+if(!nums) return false;
+
+const anio = parseInt(nums[0]);
+const mes = parseInt(nums[1]) + 1;
+const dia = parseInt(nums[2]);
+
+return dia === d && mes === m && anio === y;
+}
+
+// Formato 16/04/2026
+const match = t.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+
+if(match){
 
 const dia = parseInt(match[1]);
 const mes = parseInt(match[2]);
 const anio = parseInt(match[3]);
 
-return dia === diaHoy && mes === mesHoy && anio === anioHoy;
+return dia === d && mes === m && anio === y;
+}
+
+return false;
 
 });
 
 }
 
-// MENSAJE DINAMICO
+// ================= MENSAJE =================
 document.getElementById("docInput").addEventListener("input",function(){
 
 const mensaje = document.getElementById("mensaje");
 const btn = document.getElementById("btnIngreso");
 
-const doc = this.value.trim();
-const user = getUser();
+const doc = limpiarDoc(this.value);
 
 btn.disabled = false;
 
@@ -253,25 +270,27 @@ mensaje.innerText="";
 return;
 }
 
+// BLOQUEAR
 if(yaIngresoHoy(doc)){
 mensaje.innerText="⚠️ Este documento ya registró ingreso hoy.";
 btn.disabled = true;
 return;
 }
 
+const user = getUser();
+
 if(user){
-const nombre = user.nombre.split(" ")[0];
-mensaje.innerText="Bienvenido nuevamente, " + nombre + " 👋";
+mensaje.innerText="Bienvenido nuevamente, " + user.nombre.split(" ")[0] + " 👋";
 }else{
 mensaje.innerText="Bienvenido a nuestras instalaciones, por favor registre sus datos 😊";
 }
 
 });
 
-// INGRESO
+// ================= INGRESO =================
 function irIngreso(){
 
-const input = document.getElementById("docInput").value.trim();
+const input = limpiarDoc(document.getElementById("docInput").value);
 
 if(!input){
 alert("Debe ingresar un número de documento");
@@ -279,7 +298,7 @@ return;
 }
 
 if(yaIngresoHoy(input)){
-alert("Este documento ya registró ingreso hoy.");
+alert("Este documento ya ingresó hoy.");
 return;
 }
 
